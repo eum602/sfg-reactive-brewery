@@ -15,6 +15,7 @@ import reactor.netty.http.client.HttpClient;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import static guru.springframework.sfgrestbrewery.bootstrap.BeerLoader.BEER_1_UPC;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -52,6 +53,24 @@ public class WebClientIT {
         });
 
         countDownLatch.await(1000, TimeUnit.MILLISECONDS); //countDown only waits for 1 second
+        assertThat(countDownLatch.getCount()).isEqualTo(0);
+    }
+
+    @Test
+    void getBeerByUpc() throws InterruptedException {
+        CountDownLatch countDownLatch = new CountDownLatch(1);
+
+        Mono<BeerDto> beerDtoMono = webClient.get().uri("/api/v1/beerUpc/" +  BEER_1_UPC)
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve().bodyToMono(BeerDto.class);
+        beerDtoMono.subscribe(beer -> {
+            assertThat(beer).isNotNull();
+            assertThat(beer.getBeerName()).isNotNull();
+
+            countDownLatch.countDown();
+        });
+
+        countDownLatch.await(1000,TimeUnit.MILLISECONDS);
         assertThat(countDownLatch.getCount()).isEqualTo(0);
     }
 

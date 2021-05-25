@@ -59,7 +59,7 @@ class BeerControllerTest {
 
     @Test
     void getBeerByUpc(){
-        given(beerService.getByUpc(any())).willReturn(validBeer); //sets how the mock beer service should behave when called
+        given(beerService.getByUpc(any())).willReturn(Mono.just(validBeer)); //sets how the mock beer service should behave when called
         webTestClient.get()
                 .uri("/api/v1/beerUpc/" + validBeer.getUpc())
                 .accept(MediaType.APPLICATION_JSON)
