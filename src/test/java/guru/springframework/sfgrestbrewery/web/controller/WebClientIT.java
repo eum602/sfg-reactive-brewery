@@ -6,13 +6,14 @@ import guru.springframework.sfgrestbrewery.web.model.BeerPagedList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 import reactor.netty.http.client.HttpClient;
 
@@ -120,6 +121,35 @@ public class WebClientIT {
                     });
                 });
         countDownLatch.await(1000, TimeUnit.MILLISECONDS);
+        assertThat(countDownLatch.getCount()).isEqualTo(0);
+    }
+
+    @Test
+    void testUpdateBeerNotFound() throws InterruptedException {
+        CountDownLatch countDownLatch = new CountDownLatch(2);
+        BeerDto updatePayload = BeerDto
+                .builder()
+                .beerName("eum602Update")
+                .beerStyle("PALE_ALE")
+                .upc("12345678")
+                .price(new BigDecimal("9.99"))
+                .build();
+        webClient.put().uri("/api/v1/beer" + 200)//passing an index "200" which does not exist in the db
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(BodyInserters.fromValue(updatePayload))
+                .retrieve().toBodilessEntity()
+                .subscribe(responseEntity -> {//doing nothing here since this test wants to test the exception condition
+                },throwable -> {//setting an exception condition
+                    if (throwable.getClass().getName().equals("org.springframework.web.reactive.function.client.WebClientResponseException$NotFound")){
+                        WebClientResponseException ex = (WebClientResponseException) throwable;
+                         if (ex.getStatusCode().equals(HttpStatus.NOT_FOUND)){
+                             countDownLatch.countDown();
+                         }
+                    }
+                });
+        countDownLatch.countDown();
+
+        countDownLatch.await(1000,TimeUnit.MILLISECONDS);
         assertThat(countDownLatch.getCount()).isEqualTo(0);
     }
 

@@ -92,6 +92,7 @@ public class BeerServiceImpl implements BeerService {
     @Override
     public Mono<BeerDto> updateBeer(Integer beerId, BeerDto beerDto) {
         return beerRepository.findById(beerId)
+                .defaultIfEmpty(Beer.builder().build()) //if nothing comes back a beer object with null 'id' is returned from here
                 .map(beer -> {
                     beer.setBeerName(beerDto.getBeerName());
                     beer.setBeerStyle(BeerStyleEnum.valueOf(beerDto.getBeerStyle()));
@@ -99,7 +100,12 @@ public class BeerServiceImpl implements BeerService {
                     beer.setUpc(beerDto.getUpc());
                     return beer;
                 })
-                .flatMap(beerRepository::save)
+                .flatMap(updateBeer -> {
+                    if (updateBeer.getId() != null){
+                        return beerRepository.save(updateBeer);
+                    }
+                    return Mono.just(updateBeer);
+                })
                 .map(beerMapper::beerToBeerDto);
     }
 
