@@ -52,6 +52,12 @@ public class BeerController {
         return ResponseEntity.ok(beerService.listBeers(beerName, beerStyle, PageRequest.of(pageNumber, pageSize), showInventoryOnHand));
     }
 
+    @ExceptionHandler
+    ResponseEntity<Void> handleNotFound(NotFoundException ex){//this way allows to avoid the 500 internal server error, but instead handles the notFoundException by
+        //returning a 404 response to the client
+        return ResponseEntity.notFound().build();
+    }
+
     @GetMapping("beer/{beerId}")
     public ResponseEntity<Mono<BeerDto>> getBeerById(@PathVariable("beerId") Integer beerId,
                                                      @RequestParam(value = "showInventoryOnHand", required = false) Boolean showInventoryOnHand){
@@ -59,7 +65,14 @@ public class BeerController {
             showInventoryOnHand = false;
         }
 
-        return ResponseEntity.ok(beerService.getById(beerId, showInventoryOnHand)); //ok method takes the body -> this is one option to return the response body
+        return ResponseEntity.ok(beerService.getById(beerId, showInventoryOnHand)
+                .defaultIfEmpty(BeerDto.builder().build())
+                .doOnNext(beerDto -> {
+                    if (beerDto.getId() == null){
+                        throw new NotFoundException();
+                    }
+                })
+        ); //ok method takes the body -> this is one option to return the response body
     }
 
     @GetMapping("beerUpc/{upc}")

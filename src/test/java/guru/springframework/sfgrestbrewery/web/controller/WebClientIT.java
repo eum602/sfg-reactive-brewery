@@ -1,6 +1,5 @@
 package guru.springframework.sfgrestbrewery.web.controller;
 
-import guru.springframework.sfgrestbrewery.domain.Beer;
 import guru.springframework.sfgrestbrewery.web.model.BeerDto;
 import guru.springframework.sfgrestbrewery.web.model.BeerPagedList;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +21,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static guru.springframework.sfgrestbrewery.bootstrap.BeerLoader.BEER_1_UPC;
+import static guru.springframework.sfgrestbrewery.bootstrap.BeerLoader.BEER_2_UPC;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -42,6 +42,35 @@ public class WebClientIT {
                 .baseUrl(BASE_URL)
                 .clientConnector(new ReactorClientHttpConnector(HttpClient.create().wiretap(true)))
                 .build();
+    }
+
+    @Test
+    void testDeleteBeer() throws InterruptedException{
+        CountDownLatch countDownLatch = new CountDownLatch(3);
+        //webClient.get().uri("/api/v1/beer") ----> get a list of beers
+        webClient.get().uri("/api/v1/beer")
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .bodyToMono(BeerPagedList.class)
+                .publishOn(Schedulers.single())
+                .subscribe(pagedList -> {
+                    countDownLatch.countDown();
+                    BeerDto beerDto = pagedList.getContent().get(0);//get the first beer
+                    webClient.delete().uri("/api/v1/beer/" + beerDto.getId())
+                            .retrieve().toBodilessEntity()
+                            .flatMap(responseEntity -> {
+                                countDownLatch.countDown();
+                                return webClient.get().uri("/api/v1/beer/" + beerDto.getId()) //get a beer that has been deleted
+                                        .accept(MediaType.APPLICATION_JSON)
+                                        .retrieve().bodyToMono(BeerDto.class);
+                            }).subscribe(savedDto -> {
+
+                    },throwable -> {//because an exception is expected to be thrown since te beer no longer exist in the db
+                                countDownLatch.countDown();
+                    });
+                });
+        countDownLatch.await(1000, TimeUnit.MILLISECONDS);
+        assertThat(countDownLatch.getCount()).isEqualTo(0);
     }
 
     @Test
@@ -175,7 +204,7 @@ public class WebClientIT {
     void getBeerByUpc() throws InterruptedException {
         CountDownLatch countDownLatch = new CountDownLatch(1);
 
-        Mono<BeerDto> beerDtoMono = webClient.get().uri("/api/v1/beerUpc/" +  BEER_1_UPC)
+        Mono<BeerDto> beerDtoMono = webClient.get().uri("/api/v1/beerUpc/" +  BEER_2_UPC)
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve().bodyToMono(BeerDto.class);
         beerDtoMono.subscribe(beer -> {
