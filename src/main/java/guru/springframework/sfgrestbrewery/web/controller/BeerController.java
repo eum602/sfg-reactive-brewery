@@ -83,7 +83,9 @@ public class BeerController {
     }
 
     @PutMapping("beer/{beerId}")
-    public ResponseEntity<Void> updateBeerById(@PathVariable("beerId") UUID beerId, @RequestBody @Validated BeerDto beerDto){
+    public ResponseEntity<Void> updateBeerById(@PathVariable("beerId") Integer beerId, @RequestBody @Validated BeerDto beerDto){
+        beerService.updateBeer(beerId,beerDto).subscribe();//subscribe puts a back pressure, subscribes until a response comes back. Important
+        //to trigger the reactive chain
         return ResponseEntity.noContent().build();
     }
 
