@@ -90,6 +90,14 @@ public class BeerServiceImpl implements BeerService {
     }
 
     @Override
+    public Mono<BeerDto> saveNewBeerMono(Mono<BeerDto> beerDto) {
+        return beerDto.map(beerMapper::beerDtoToBeer)
+                .flatMap(beerRepository::save)
+                .map(beerMapper::beerToBeerDto); //when we save something to the repository we actually get a new object back
+        // -the result comming out of save is mapped again as a beerDto
+    }
+
+    @Override
     public Mono<BeerDto> updateBeer(Integer beerId, BeerDto beerDto) {
         return beerRepository.findById(beerId)
                 .defaultIfEmpty(Beer.builder().build()) //if nothing comes back a beer object with null 'id' is returned from here
