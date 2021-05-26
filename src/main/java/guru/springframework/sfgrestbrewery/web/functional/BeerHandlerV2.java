@@ -23,4 +23,13 @@ public class BeerHandlerV2 {
                     return ServerResponse.ok().bodyValue(beerDto);
                 }).switchIfEmpty(ServerResponse.notFound().build());
     }
+
+    public Mono<ServerResponse> getBeerByUpc(ServerRequest request){
+        String upc = request.pathVariable("upc");
+
+        return beerService.getByUpc(upc)
+                .flatMap(beerDto -> {
+                    return ServerResponse.ok().bodyValue(beerDto);
+                }).switchIfEmpty(ServerResponse.notFound().build());
+    }
 }

@@ -14,6 +14,7 @@ import reactor.netty.http.client.HttpClient;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import static guru.springframework.sfgrestbrewery.bootstrap.BeerLoader.BEER_2_UPC;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
@@ -54,6 +55,41 @@ public class WebClientV2IT {
         CountDownLatch countDownLatch = new CountDownLatch(1);
 
         Mono<BeerDto> beerDtoMono = webClient.get().uri( BeerRouterConfig.BEER_V2_URL + "/" + 1345)
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve().bodyToMono(BeerDto.class);
+        beerDtoMono.subscribe(beer -> {
+        },throwable -> {
+            countDownLatch.countDown();
+        });
+
+        countDownLatch.await(1000, TimeUnit.MILLISECONDS); //countDown only waits for 1 second
+        assertThat(countDownLatch.getCount()).isEqualTo(0);
+    }
+
+    @Test
+    void getBeerByUpc() throws InterruptedException{
+        CountDownLatch countDownLatch = new CountDownLatch(1);
+
+        Mono<BeerDto> beerDtoMono = webClient.get().uri( BeerRouterConfig.BEER_V2_URL_UPC + "/" + BEER_2_UPC)
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve().bodyToMono(BeerDto.class);
+
+        beerDtoMono.subscribe(beer -> {
+            assertThat(beer).isNotNull();
+            assertThat(beer.getBeerName()).isNotNull();
+
+            countDownLatch.countDown();
+        });
+
+        countDownLatch.await(2000, TimeUnit.MILLISECONDS); //countDown only waits for 1 second
+        assertThat(countDownLatch.getCount()).isEqualTo(0);
+    }
+
+    @Test
+    void getBeerByUpcNotFound() throws InterruptedException{
+        CountDownLatch countDownLatch = new CountDownLatch(1);
+
+        Mono<BeerDto> beerDtoMono = webClient.get().uri( BeerRouterConfig.BEER_V2_URL_UPC + "/" + 1234)
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve().bodyToMono(BeerDto.class);
         beerDtoMono.subscribe(beer -> {
