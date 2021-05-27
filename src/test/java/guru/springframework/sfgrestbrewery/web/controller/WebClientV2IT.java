@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 import static guru.springframework.sfgrestbrewery.bootstrap.BeerLoader.BEER_2_UPC;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
 public class WebClientV2IT {
@@ -230,5 +231,36 @@ public class WebClientV2IT {
         });
         countDownLatch.await(1000,TimeUnit.MILLISECONDS);
         assertThat(countDownLatch.getCount()).isEqualTo(0);
+    }
+
+    @Test
+    void testDeleteBeer(){
+        Integer beerId = 3;
+        CountDownLatch countDownLatch = new CountDownLatch(1);
+
+        webClient.delete().uri(BeerRouterConfig.BEER_V2_URL + "/" + beerId)
+                .retrieve().toBodilessEntity()
+                .flatMap(responseEntity -> {
+                    countDownLatch.countDown();
+
+                    return webClient.get().uri(BeerRouterConfig.BEER_V2_URL + "/" + beerId)
+                            .accept(MediaType.APPLICATION_JSON)
+                            .retrieve().bodyToMono(BeerDto.class);
+                }).subscribe(deletedBeerDto -> {},throwable -> { //should fall here since the get operation should fail because
+                    //the element has just been deleted
+                    countDownLatch.countDown();
+        });
+    }
+
+    @Test
+    void testDeleteBeerNotFound() {
+        Integer beerId = 4;
+        webClient.delete().uri(BeerRouterConfig.BEER_V2_URL + "/" + beerId)
+                .retrieve().toBodilessEntity().block();
+        assertThrows(WebClientResponseException.NotFound.class, () -> { //repeating the operation again to make sure it will be thrown
+            //since the element has just already been deleted
+            webClient.delete().uri(BeerRouterConfig.BEER_V2_URL + "/" +beerId)
+                    .retrieve().toBodilessEntity().block();
+        });
     }
 }
